@@ -17,7 +17,7 @@ tau = 1
 
 terminal_n = 2
 maturity = 2
-strike = 2.4
+strike = 0.4
 
 bond_list = [1, 0.9512, 0.9048, 0.8607, 0.8187,
              0.7788, 0.7408, 0.7047, 0.6703, 0.6376, 0.6065]
@@ -153,6 +153,11 @@ def beep(freq, dur=100):
 
 
 if __name__ == "__main__":
-    fx = calculate_equity_loop(maturity, strike)
-    print(fx)
+    eq = 0
+    for i in range(0, 10):
+        tmp = calculate_equity_loop(maturity, strike)
+        eq += tmp
+        print(i)
+        print(tmp)
+    print(eq/10)
     beep(500, 2000)
