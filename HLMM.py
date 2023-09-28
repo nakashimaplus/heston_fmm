@@ -138,6 +138,13 @@ if __name__ == "__main__":
     # print(np.linalg.eigvals(e))
     #rho_tri = np.linalg.cholesky(e)
 
-    print(c)
-    print(np.linalg.eigvals(c))
-# print(L@D@L.T)
+    # print(c)
+    # print(np.linalg.eigvals(c))
+    # print(L@D@L.T)
+
+    rho = np.array([[1, -0.3, 0.5, 0.5, 0],
+                    [-0.3, 1, 0, 0, 0],
+                    [0.5, 0, , 0.98, 0],
+                    [0.5, 0, 0.98, 1, 0],
+                    [0, 0, 0, 0, 1]])
+    print(np.linalg.eigvals(rho))
