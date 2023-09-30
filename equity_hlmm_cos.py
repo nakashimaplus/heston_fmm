@@ -121,8 +121,9 @@ def meanSqrt(kappa, v0, vbar, gamma):
 
 def CfFH1LMM_EQ(u, tau, T):
     i = np.complex(0.0, 1.0)
-    M = 10
+    M = 500
     delta_s = tau / M
+    delta_tau = 1
 
     kappa = 1.2
     xi_bar = 0.1
@@ -145,10 +146,10 @@ def CfFH1LMM_EQ(u, tau, T):
     rho_l_l = 0.98
 
     def libor_0(j):
-        return (bond_list[j-1]/bond_list[j]-1)/tau
+        return (bond_list[j-1]/bond_list[j]-1)/delta_tau
 
     def psi(j):
-        return tau * sigma * libor_0(j) / (1+tau*libor_0(j))
+        return delta_tau * sigma * libor_0(j) / (1+delta_tau*libor_0(j))
 
     def m_func(t):
         import math
@@ -244,6 +245,7 @@ def CfFH1LMM_EQ(u, tau, T):
         if tau_u == 0:
             theta_integral = 0
         else:
+            # theta_integralが本来負にならない？
             theta_integral = integrate.trapz(np.real(
                 temp1(z_u, tau_u)), z_u) - integrate.trapz(np.real(temp1(z_l, tau_l)), z_l)
         temp_a += a_func(temp_b_xi, temp_b_v, u, theta_integral, T-_tau)
