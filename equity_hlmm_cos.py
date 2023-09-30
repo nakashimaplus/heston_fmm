@@ -119,12 +119,9 @@ def meanSqrt(kappa, v0, vbar, gamma):
     return temp1
 
 
-def CfFH1LMM_EQ(u, tau):
+def CfFH1LMM_EQ(u, tau, T):
     i = np.complex(0.0, 1.0)
-    M = 500
-    T = 1
-    t = 0
-    tau = T-t
+    M = 10
     delta_s = tau / M
 
     kappa = 1.2
@@ -148,7 +145,7 @@ def CfFH1LMM_EQ(u, tau):
     rho_l_l = 0.98
 
     def libor_0(j):
-        (bond_list[j-1]/bond_list[j]-1)/tau
+        return (bond_list[j-1]/bond_list[j]-1)/tau
 
     def psi(j):
         return tau * sigma * libor_0(j) / (1+tau*libor_0(j))
@@ -158,7 +155,6 @@ def CfFH1LMM_EQ(u, tau):
         return math.ceil(t)
 
     def a_1(t):
-        a = m_func(t) + 1
         if m_func(t) + 1 > T:
             return 0
         a_1 = 0
@@ -167,13 +163,16 @@ def CfFH1LMM_EQ(u, tau):
         for i in range(m_func(t)+1, T+1):
             for j in range(m_func(t)+1, T+1):
                 if not i == j:
-                    a_1 += psi(i)*psi(j)
+                    a_1 += psi(i)*psi(j)*rho_l_l
         return a_1
 
     def a_2(t):
-        # T=1で暫定対応
-        # return psi(tau)*rho_x_l
-        return 0
+        if m_func(t) + 1 > T:
+            return 0
+        a_2 = 0
+        for i in range(m_func(t)+1, T+1):
+            a_2 += psi(i) * rho_x_l
+        return a_2
 
     def d_1_j(u):
         tmp1 = (rho_x_xi*gamma*i*u-kappa)**2
@@ -242,8 +241,11 @@ def CfFH1LMM_EQ(u, tau):
         _N = 500
         z_u = np.linspace(0+1e-10, tau_u-1e-10, _N)
         z_l = np.linspace(0+1e-10, tau_u-1e-10, _N)
-        theta_integral = integrate.trapz(np.real(
-            temp1(z_u, tau_u)), z_u) - integrate.trapz(np.real(temp1(z_l, tau_l)), z_l)
+        if tau_u == 0:
+            theta_integral = 0
+        else:
+            theta_integral = integrate.trapz(np.real(
+                temp1(z_u, tau_u)), z_u) - integrate.trapz(np.real(temp1(z_l, tau_l)), z_l)
         temp_a += a_func(temp_b_xi, temp_b_v, u, theta_integral, T-_tau)
         temp_b_xi += b_xi(temp_b_xi, u)
         temp_b_v += b_v(temp_b_v, u, T-_tau)
@@ -258,7 +260,9 @@ bond_list = [1, 0.9512, 0.9048, 0.8607, 0.8187,
 
 def mainCalculation():
     CP = OptionType.CALL
-    T = 1
+    T = 5
+    t = 0
+    tau = T-t
 
     # Settings for the COS method
 
@@ -273,9 +277,9 @@ def mainCalculation():
 
     # Value from the COS method
 
-    def cf(u): return CfFH1LMM_EQ(u, T)
-    valCOS_H1HW = 0.9512*CallPutOptionPriceCOSMthd_StochIR(cf,
-                                                           CP, 1.0/0.9512, T, K, N, L, 1.0)
+    def cf(u): return CfFH1LMM_EQ(u, tau, T)
+    valCOS_H1HW = bond_list[T]*CallPutOptionPriceCOSMthd_StochIR(cf,
+                                                                 CP, 1.0/bond_list[T], T, K, N, L, 1.0)
     print(valCOS_H1HW)
 
 
