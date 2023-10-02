@@ -237,17 +237,14 @@ def CfFH1LMM_EQ(u, tau, T):
     temp_a = 0
 
     for _tau in tau_list:
-        tau_u = _tau
-        tau_l = _tau - tau / M
+        tau_l = _tau
+        tau_u = _tau + tau / M
         _N = 500
         z_u = np.linspace(0+1e-10, tau_u-1e-10, _N)
-        z_l = np.linspace(0+1e-10, tau_u-1e-10, _N)
-        if tau_u == 0:
-            theta_integral = 0
-        else:
-            # theta_integralが本来負にならない？
-            theta_integral = integrate.trapz(np.real(
-                temp1(z_u, tau_u)), z_u) - integrate.trapz(np.real(temp1(z_l, tau_l)), z_l)
+        z_l = np.linspace(0+1e-10, tau_l-1e-10, _N)
+
+        theta_integral = integrate.trapz(np.real(
+            temp1(z_u, tau_u)), z_u) - integrate.trapz(np.real(temp1(z_l, tau_l)), z_l)
         temp_a += a_func(temp_b_xi, temp_b_v, u, theta_integral, T-_tau)
         temp_b_xi += b_xi(temp_b_xi, u)
         temp_b_v += b_v(temp_b_v, u, T-_tau)
@@ -262,7 +259,7 @@ bond_list = [1, 0.9512, 0.9048, 0.8607, 0.8187,
 
 def mainCalculation():
     CP = OptionType.CALL
-    T = 5
+    T = 2
     t = 0
     tau = T-t
 
@@ -275,7 +272,7 @@ def mainCalculation():
 
     # Strike prices
 
-    K = [0.8]
+    K = [2.4]
 
     # Value from the COS method
 
