@@ -259,7 +259,7 @@ bond_list = [1, 0.9512, 0.9048, 0.8607, 0.8187,
 
 def mainCalculation():
     CP = OptionType.CALL
-    T = 2
+    T = 10
     t = 0
     tau = T-t
 
