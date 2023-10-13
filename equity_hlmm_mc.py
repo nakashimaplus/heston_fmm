@@ -82,10 +82,10 @@ def libor_zero(k):
     return 1 / tau * (bond_list[k-1] / bond_list[k]-1)
 
 
-def forward_equity(f_e_ini, xi_ini, v_ini, libor_list, w_x, w_libor_list):
+def forward_equity(f_e_ini, xi_ini, v_ini, libor_list, w_x, w_libor_list, t):
     tmp1 = sqrt(abs(xi_ini)) * sqrt(delta_h) * w_x
     sum = 0
-    for j in range(0, terminal_n+1):
+    for j in range(m_func(t)+1, terminal_n+1):
         tmp2 = tau * sigma * phi(j, libor_list=libor_list) * sqrt(abs(v_ini))
         tmp3 = 1 + tau * libor_list[j-1]
         tmp4 = sqrt(delta_h) * w_libor_list[j-1]
@@ -94,6 +94,11 @@ def forward_equity(f_e_ini, xi_ini, v_ini, libor_list, w_x, w_libor_list):
     f_e = f_e_ini + f_e_ini * (tmp1 + sum)
 
     return f_e
+
+
+def m_func(t):
+    import math
+    return math.ceil(t)
 
 
 def xi_forward_equity(xi_ini, w_xi):
@@ -127,14 +132,14 @@ def calculate_equity(maturity, strike):
     _v = v_0
     _xi = xi_0
     _f = s_0 / bond_list[terminal_n]
-    for grid in grid_list:
+    for t_grid in grid_list:
         w_x, w_xi, w_libor_list, w_v = generate_rv(rho)
 
         tmp_libor_list = []
         for k in range(1, terminal_n+1):
             tmp_libor_list.append(libor(k, _v, libor_list, w_libor_list[k-1]))
 
-        _f = forward_equity(_f, _xi, _v, libor_list, w_x, w_libor_list)
+        _f = forward_equity(_f, _xi, _v, libor_list, w_x, w_libor_list, t_grid)
         v_calc = v_libor(_v, w_v)
         xi_calc = xi_forward_equity(_xi, w_xi)
 
