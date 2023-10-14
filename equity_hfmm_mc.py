@@ -22,6 +22,7 @@ strike = 0.4
 bond_list = [1, 0.9512, 0.9048, 0.8607, 0.8187,
              0.7788, 0.7408, 0.7047, 0.6703, 0.6376, 0.6065]
 
+T_list = [t for t in range(0, terminal_n+1)]
 
 delta_h = 1/20
 
@@ -39,38 +40,40 @@ def generate_rho(n_number):
 
     rho_libor_x = np.array([0.5] * n_number)
 
-    rho_v = np.array([0]*(n_number+2))
     rho_xi = np.array([0]*n_number)
 
     c_1 = np.vstack((rho_libor_x, rho_xi))
     c_2 = np.hstack((rho_xi_x, c_1))
     c_3 = np.hstack((c_1.T, rho_libor_libor))
-    c_4 = np.vstack((c_2, c_3))
-    c_5 = np.vstack((c_4, rho_v))
-    c_6 = np.hstack((rho_v, [1]))
-    rho = np.vstack((c_5.T, c_6)).T
+    rho = np.vstack((c_2, c_3))
 
     return rho
 
 
-def libor(k,  v_ini, libor_list, w_libor):
+def libor(k,   libor_list, w_libor, t):
     tmp1 = libor_list[k-1] + sigma * \
-        phi(k,  libor_list[k-1]) * sqrt(abs(v_ini)) * sqrt(delta_h)*w_libor
+        phi(k,  libor_list[k-1]) * g_func(k, t) * sqrt(delta_h)*w_libor
     if k == terminal_n:
         return tmp1
 
-    tmp2 = -phi(k,  libor_list[k-1]) * sigma * v_ini
+    tmp2 = -phi(k,  libor_list[k-1])*g_func(k, t) * sigma
     sum = 0
     for j in range(k+1, terminal_n+1):
-        tmp3 = tau * phi(j, libor_list=libor_list) * \
+        tmp3 = tau * phi(j, libor_list=libor_list) * g_func(j, t) * \
             sigma / (1 + tau * libor_list[j-1]) * rho_l_l * delta_h
         sum += tmp2 * tmp3
 
     return sum + tmp1
 
 
-def v_libor(v_ini, w_v):
-    return v_ini + _lambda * (v_0-v_ini)*delta_h + eta * sqrt(abs(v_ini))*sqrt(delta_h)*w_v
+def g_func(k, t):
+    lhs = T_list[k]-t
+    if lhs <= 0:
+        lhs = 0
+
+    lhs = lhs/(T_list[k]-T_list[k-1])
+    tmp = lhs if lhs < 1 else 1
+    return tmp
 
 
 def phi(k, libor_k=None, libor_list=None):
@@ -82,11 +85,12 @@ def libor_zero(k):
     return 1 / tau * (bond_list[k-1] / bond_list[k]-1)
 
 
-def forward_equity(f_e_ini, xi_ini, v_ini, libor_list, w_x, w_libor_list, t):
+def forward_equity(f_e_ini, xi_ini,  libor_list, w_x, w_libor_list, t):
     tmp1 = sqrt(abs(xi_ini)) * sqrt(delta_h) * w_x
     sum = 0
-    for j in range(m_func(t)+1, terminal_n+1):
-        tmp2 = tau * sigma * phi(j, libor_list=libor_list) * sqrt(abs(v_ini))
+    # m(t)+1 -> m(t)
+    for j in range(m_func(t), terminal_n+1):
+        tmp2 = tau * sigma * phi(j, libor_list=libor_list) * g_func(j, t)
         tmp3 = 1 + tau * libor_list[j-1]
         tmp4 = sqrt(delta_h) * w_libor_list[j-1]
         sum += tmp2 / tmp3 * tmp4
@@ -107,13 +111,12 @@ def xi_forward_equity(xi_ini, w_xi):
 
 def generate_rv(rho):
     rho_tri = np.linalg.cholesky(rho)
-    w_list = rho_tri@np.random.normal(0, 1, terminal_n + 3)
+    w_list = rho_tri@np.random.normal(0, 1, terminal_n + 2)
     w_x = w_list[0]
     w_xi = w_list[1]
     w_libor_list = w_list[2:terminal_n+2]
-    w_v = w_list[terminal_n+2]
 
-    return w_x, w_xi, w_libor_list, w_v
+    return w_x, w_xi, w_libor_list
 
 
 def get_strike(k, libor_list, maturity, terminal):
@@ -127,24 +130,22 @@ def calculate_equity(maturity, strike):
     libor_list = [libor_zero(i) for i in range(1, terminal_n+1)]
     rho = generate_rho(terminal_n)
 
-    grid_list = [grid*delta_h for grid in range(1, int(maturity/delta_h+1))]
+    grid_list = [grid*delta_h for grid in range(0, int(maturity/delta_h))]
 
-    _v = v_0
     _xi = xi_0
     _f = s_0 / bond_list[terminal_n]
     for t_grid in grid_list:
-        w_x, w_xi, w_libor_list, w_v = generate_rv(rho)
+        w_x, w_xi, w_libor_list = generate_rv(rho)
 
         tmp_libor_list = []
         for k in range(1, terminal_n+1):
-            tmp_libor_list.append(libor(k, _v, libor_list, w_libor_list[k-1]))
+            tmp_libor_list.append(
+                libor(k,  libor_list, w_libor_list[k-1], t_grid))
 
-        _f = forward_equity(_f, _xi, _v, libor_list, w_x, w_libor_list, t_grid)
-        v_calc = v_libor(_v, w_v)
+        _f = forward_equity(_f, _xi,  libor_list, w_x, w_libor_list, t_grid)
         xi_calc = xi_forward_equity(_xi, w_xi)
 
         libor_list = tmp_libor_list
-        _v = v_calc
         _xi = xi_calc
 
     strike = get_strike(strike, libor_list, maturity, terminal_n)
@@ -152,7 +153,7 @@ def calculate_equity(maturity, strike):
 
 
 def calculate_equity_loop(maturity, strike):
-    _N = 20000
+    _N = 2000
     sum = 0
     for i in range(0, _N):
         sum += calculate_equity(maturity, strike)

@@ -119,13 +119,11 @@ def meanSqrt(kappa, v0, vbar, gamma):
     return temp1
 
 
-def CfFH1LMM_EQ(u, tau):
+def CfFH1LMM_EQ(u, tau, T):
     i = np.complex(0.0, 1.0)
     M = 500
-    T = 1
-    t = 0
-    tau = T-t
     delta_s = tau / M
+    delta_tau = 1
 
     kappa = 1.2
     xi_bar = 0.1
@@ -147,29 +145,43 @@ def CfFH1LMM_EQ(u, tau):
     rho_x_v = 0
     rho_l_l = 0.98
 
-    def psi(tau):
-        # T=1で暫定対応
-        p_0_0 = 1
-        p_0_1 = 0.9512
-        return tau * sigma * (p_0_0/p_0_1-1)/(1+tau*(p_0_0/p_0_1-1))
+    def libor_0(j):
+        return (bond_list[j-1]/bond_list[j]-1)/delta_tau
 
-    def a_1(tau):
-        # T=1で暫定対応
-        # return psi(tau)**2
-        return 0
+    def psi(j):
+        return delta_tau * sigma * libor_0(j) / (1+delta_tau*libor_0(j))
 
-    def a_2(tau):
-        # T=1で暫定対応
-        # return psi(tau)*rho_x_l
-        return 0
+    def m_func(t):
+        import math
+        return math.ceil(t)
+
+    def a_1(t):
+        if m_func(t) + 1 > T:
+            return 0
+        a_1 = 0
+        for i in range(m_func(t)+1, T+1):
+            a_1 += psi(i) ** 2
+        for i in range(m_func(t)+1, T+1):
+            for j in range(m_func(t)+1, T+1):
+                if not i == j:
+                    a_1 += psi(i)*psi(j)*rho_l_l
+        return a_1
+
+    def a_2(t):
+        if m_func(t) + 1 > T:
+            return 0
+        a_2 = 0
+        for i in range(m_func(t)+1, T+1):
+            a_2 += psi(i) * rho_x_l
+        return a_2
 
     def d_1_j(u):
         tmp1 = (rho_x_xi*gamma*i*u-kappa)**2
         tmp2 = gamma**2 * (i * u + u**2)
         return np.sqrt(tmp1 + tmp2)
 
-    def d_2_j(u):
-        tmp = _lambda ** 2 + eta ** 2 * a_1(tau) * (u**2 + i * u)
+    def d_2_j(u, t):
+        tmp = _lambda ** 2 + eta ** 2 * a_1(t) * (u**2 + i * u)
         return np.sqrt(tmp)
 
     def g_1_j(u, b_xi_ini):
@@ -179,9 +191,9 @@ def CfFH1LMM_EQ(u, tau):
             d_1_j(u)-gamma**2 * b_xi_ini
         return tmp1 / tmp2
 
-    def g_2_j(u, b_v_ini):
-        tmp1 = _lambda - d_2_j(u) - eta**2 * b_v_ini
-        tmp2 = _lambda + d_2_j(u) - eta**2 * b_v_ini
+    def g_2_j(u, b_v_ini, t):
+        tmp1 = _lambda - d_2_j(u, t) - eta**2 * b_v_ini
+        tmp2 = _lambda + d_2_j(u, t) - eta**2 * b_v_ini
         return tmp1 / tmp2
 
     def b_xi(b_xi_ini, u):
@@ -190,25 +202,25 @@ def CfFH1LMM_EQ(u, tau):
         tmp2 = gamma ** 2 * (1 - g_1_j(u, b_xi_ini)*np.exp(-d_1_j(u)*delta_s))
         return tmp1 / tmp2
 
-    def b_v(b_v_ini, u):
-        tmp1 = (_lambda - d_2_j(u)-eta**2*b_v_ini) * \
-            (1-np.exp(-d_2_j(u)*delta_s))
-        tmp2 = eta ** 2 * (1-g_2_j(u, b_v_ini)
-                           * np.exp(-d_2_j(u)*delta_s))
+    def b_v(b_v_ini, u, t):
+        tmp1 = (_lambda - d_2_j(u, t)-eta**2*b_v_ini) * \
+            (1-np.exp(-d_2_j(u, t)*delta_s))
+        tmp2 = eta ** 2 * (1-g_2_j(u, b_v_ini, t)
+                           * np.exp(-d_2_j(u, t)*delta_s))
         return tmp1 / tmp2
 
-    def a_func(b_xi_ini, b_v_ini, u, theta_integral):
+    def a_func(b_xi_ini, b_v_ini, u, theta_integral, t):
         tmp_log_1 = (1-g_1_j(u, b_xi_ini)*np.exp(-d_1_j(u)
                      * delta_s))/(1-g_1_j(u, b_xi_ini))
         tmp1 = kappa * xi_bar / (gamma**2) * ((kappa-rho_x_xi*gamma *
                                                i*u-d_1_j(u))*delta_s - 2*np.log(tmp_log_1))
-        tmp_log_2 = (1-g_2_j(u, b_v_ini)*np.exp(-d_1_j(u)
-                     * delta_s))/(1-g_2_j(u, b_v_ini))
+        tmp_log_2 = (1-g_2_j(u, b_v_ini, t)*np.exp(-d_1_j(u)
+                     * delta_s))/(1-g_2_j(u, b_v_ini, t))
 
         tmp2 = _lambda * v_0 / \
-            (eta**2) * ((_lambda - d_2_j(u))*delta_s - 2*np.log(tmp_log_2))
+            (eta**2) * ((_lambda - d_2_j(u, t))*delta_s - 2*np.log(tmp_log_2))
 
-        tmp3 = a_2(tau) * (u**2 + i * u) * theta_integral
+        tmp3 = a_2(t) * (u**2 + i * u) * theta_integral
 
         return tmp1 + tmp2 - tmp3
 
@@ -219,30 +231,37 @@ def CfFH1LMM_EQ(u, tau):
     def temp1(z1, tau): return v_sqrt(tau-z1) * xi_sqrt(tau-z1)
 
     # recursive calculation
-    tau_list = [tau / M * i for i in range(1, M+1)]
+    tau_list = [tau / M * i for i in range(0, M)]
     temp_b_xi = 0
     temp_b_v = 0
     temp_a = 0
 
     for _tau in tau_list:
-        tau_u = _tau
-        tau_l = _tau - tau / M
+        tau_l = _tau
+        tau_u = _tau + tau / M
         _N = 500
         z_u = np.linspace(0+1e-10, tau_u-1e-10, _N)
-        z_l = np.linspace(0+1e-10, tau_u-1e-10, _N)
+        z_l = np.linspace(0+1e-10, tau_l-1e-10, _N)
+
         theta_integral = integrate.trapz(np.real(
             temp1(z_u, tau_u)), z_u) - integrate.trapz(np.real(temp1(z_l, tau_l)), z_l)
-        temp_a += a_func(temp_b_xi, temp_b_v, u, theta_integral)
+        temp_a += a_func(temp_b_xi, temp_b_v, u, theta_integral, T-_tau)
         temp_b_xi += b_xi(temp_b_xi, u)
-        temp_b_v += b_v(temp_b_v, u)
+        temp_b_v += b_v(temp_b_v, u, T-_tau)
 
     cf = np.exp(temp_a + temp_b_xi * xi_0 + temp_b_v * v_0)
     return cf
 
 
+bond_list = [1, 0.9512, 0.9048, 0.8607, 0.8187,
+             0.7788, 0.7408, 0.7047, 0.6703, 0.6376, 0.6065]
+
+
 def mainCalculation():
     CP = OptionType.CALL
-    T = 1
+    T = 10
+    t = 0
+    tau = T-t
 
     # Settings for the COS method
 
@@ -251,18 +270,16 @@ def mainCalculation():
 
     # Market settings
 
-    bond_list = [1, 0.9512, 0.9048, 0.8607, 0.8187,
-                 0.7788, 0.7408, 0.7047, 0.6703, 0.6376, 0.6065]
-
     # Strike prices
 
-    K = [0.8]
+    K = [2.4]
 
     # Value from the COS method
 
-    def cf(u): return CfFH1LMM_EQ(u, T)
-    valCOS_H1HW = 0.9512*CallPutOptionPriceCOSMthd_StochIR(cf,
-                                                           CP, 1.0/0.9512, T, K, N, L, 1.0)
+    def cf(u): return CfFH1LMM_EQ(u, tau, T)
+    valCOS_H1HW = bond_list[T]*CallPutOptionPriceCOSMthd_StochIR(cf,
+                                                                 CP, 1.0/bond_list[T], T, K, N, L, 1.0)
+    print(valCOS_H1HW)
 
 
 mainCalculation()
