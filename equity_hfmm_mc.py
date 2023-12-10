@@ -8,7 +8,7 @@ xi_bar = 0.1
 gamma = 0.5
 s_0 = 1
 xi_0 = 0.1
-beta = 0.5
+beta = 1  # 要検討
 sigma = 0.25
 _lambda = 1
 v_0 = 1
@@ -16,8 +16,8 @@ eta = 0.1
 tau = 1
 
 terminal_n = 10
-maturity = 2
-strike = 0.4
+maturity = 10
+strike = 2.4
 
 bond_list = [1, 0.9512, 0.9048, 0.8607, 0.8187,
              0.7788, 0.7408, 0.7047, 0.6703, 0.6376, 0.6065]
@@ -153,7 +153,7 @@ def calculate_equity(maturity, strike):
 
 
 def calculate_equity_loop(maturity, strike):
-    _N = 2000
+    _N = 10000
     sum = 0
     for i in range(0, _N):
         sum += calculate_equity(maturity, strike)

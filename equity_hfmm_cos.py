@@ -183,8 +183,8 @@ def CfFH1LMM_EQ(u, tau, T):
 
         def temp1(t_list):
 
-            # return [a_1(t)+2*(a + b * np.exp(-c * t))*a_2(t) for t in t_list]
-            return (a + b * np.exp(-c * t_list))
+            return [a_1(t)+2*(a + b * np.exp(-c * t))*a_2(t) for t in t_list]
+            # return (a + b * np.exp(-c * t_list))
         return temp1
 
     # def d_2_j(u, t):
