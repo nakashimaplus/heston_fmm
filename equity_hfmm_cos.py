@@ -112,17 +112,12 @@ def CfFH1LMM_EQ(u, tau, T):
 
     # LMM model parameter settings
 
-    beta = 0.5
     sigma = 0.25
-    _lambda = 1
-    v_0 = 1
-    eta = 0.1
 
     # Correlations
 
     rho_x_xi = -0.3
     rho_x_l = 0.5
-    rho_x_v = 0
     rho_l_l = 0.98
 
     def libor_0(j):
@@ -286,7 +281,7 @@ def mainCalculation():
 
     # Strike prices
 
-    K = [2.4]
+    K = [0.4, 0.8, 1.0, 1.2, 1.6, 2.0, 2.4]
 
     # Value from the COS method
 
